@@ -1,0 +1,105 @@
+/*  */
+/* RESET BÁSICO */
+h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+li {
+  margin: 1rem 0;
+  line-height: 1.4;
+}
+
+/* destaque de data/hora */
+b {
+  margin-right: 6px;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+/* APP ROOT */
+.demo-app {
+  display: flex;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 14px;
+  background: #f4f6f9;
+}
+
+/* SIDEBAR */
+.demo-app-sidebar {
+  width: 280px;
+  background: #ffffff;
+  border-right: 1px solid #e0e6ed;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.03);
+}
+
+/* SEÇÕES SIDEBAR */
+.demo-app-sidebar-section {
+  padding: 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* MAIN CONTENT */
+.demo-app-main {
+  flex-grow: 1;
+  padding: 2rem;
+}
+
+/* CALENDÁRIO */
+.fc {
+  max-width: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* HEADER DO CALENDÁRIO */
+.fc-toolbar-title {
+  font-size: 18px !important;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* BOTÕES */
+.fc-button {
+  background: #1976d2 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  font-size: 13px !important;
+  transition: 0.2s;
+}
+
+.fc-button:hover {
+  background: #1565c0 !important;
+}
+
+/* DIA ATUAL */
+.fc-day-today {
+  background: rgba(25, 118, 210, 0.08) !important;
+}
+
+/* EVENTOS */
+.fc-event {
+  border-radius: 6px !important;
+  padding: 2px 4px;
+  font-size: 12px;
+  border: none !important;
+}
+
+/* HOVER EVENTO */
+.fc-event:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+  cursor: pointer;
+}
