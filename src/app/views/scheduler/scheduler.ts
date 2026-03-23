@@ -14,13 +14,14 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import bootstrap5Plugin from '@fullcalendar/bootstrap5';
 import { Toast } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { ProgressSpinner } from 'primeng/progressspinner';
 import { firstValueFrom } from 'rxjs';
 import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { DatePickerModule } from 'primeng/datepicker';
 import { InputMaskModule } from 'primeng/inputmask';
+import { ConfirmDialog } from 'primeng/confirmdialog';
 
 
 
@@ -28,10 +29,10 @@ import { InputMaskModule } from 'primeng/inputmask';
 @Component({
   selector: 'app-scheduler',
   standalone: true,
-  imports: [ FullCalendarModule, CommonModule, Dialog, ButtonModule, InputTextModule, Toast, DatePipe,ProgressSpinner, ReactiveFormsModule, ColorPickerModule, DatePickerModule, InputMaskModule],
+  imports: [ FullCalendarModule, CommonModule, Dialog, ButtonModule, InputTextModule, Toast, DatePipe,ProgressSpinner, ReactiveFormsModule, ColorPickerModule, DatePickerModule, InputMaskModule, ConfirmDialog ],
   templateUrl: './scheduler.html',
   styleUrl: './scheduler.css',
-   providers: [MessageService]
+   providers: [MessageService, ConfirmationService]
 })
 export class Scheduler implements OnInit{
   private xanoService = inject(Xano);
@@ -44,6 +45,9 @@ export class Scheduler implements OnInit{
   selectInfoGlobal: any;
   color: string = '#6466f1';
   mostrarData: boolean = false;
+  eventoSelecionado: any = null;
+  mostrarModalEvento = false;
+  loadingSave: boolean = false;
   
 
 
@@ -100,7 +104,7 @@ export class Scheduler implements OnInit{
 
 
   
-  constructor(private changeDetector: ChangeDetectorRef, private messageService: MessageService, private fb: FormBuilder) {
+  constructor(private changeDetector: ChangeDetectorRef, private messageService: MessageService, private fb: FormBuilder, private confirmationService: ConfirmationService) {
   }
 
 
@@ -155,8 +159,10 @@ export class Scheduler implements OnInit{
   this.mostrarModal = true; // abre modal
 }
 
+
 salvarEvento() {
   if (this.formEvento.invalid) return;
+  this.loadingSave = true;
 
   const calendarApi = this.selectInfoGlobal.view.calendar;
 
@@ -187,11 +193,13 @@ salvarEvento() {
         key: 'br',
         life: 3000
       });
+        this.loadingSave = true;
       this.mostrarData = false;
       this.mostrarModal = false;
       this.formEvento.reset();
     },
     error: (err) => {
+        this.loadingSave = false;
       this.messageService.add({
         severity: 'error',
         summary: 'Erro',
@@ -200,27 +208,65 @@ salvarEvento() {
         life: 3000
       });
     }
+    
   });
 }
 
+handleEventClick(clickInfo: EventClickArg) {
+  this.eventoSelecionado = clickInfo.event;
+  this.mostrarModalEvento = true;
+}
 
-  handleEventClick(clickInfo: EventClickArg) {
-    const idDoEvento = clickInfo.event.id;
-   if (confirm(`Tem certeza que deseja excluir o evento '${clickInfo.event.title}'?`)) {
-      // 1. Chama o Xano para deletar no Banco de Dados
-      this.xanoService.deleteEvent(idDoEvento).subscribe({
-        next: () => {
-          // 2. Se deletou no Xano, remove visualmente do FullCalendar
-          clickInfo.event.remove(); 
-           this.messageService.add({ severity: 'success', summary: 'Successo', detail: 'Evento excluído', key: 'br', life: 3000 });
-        },
-        error: (err) => {
-          console.error(err);
-          this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Erro ao excluir no Xano: ' + err.message ,  key: 'br', life: 3000})
-        }
+
+  // handleEventClick(clickInfo: EventClickArg) {
+  //   const idDoEvento = clickInfo.event.id;
+  //  if (confirm(`Tem certeza que deseja excluir o evento '${clickInfo.event.title}'?`)) {
+  //     // 1. Chama o Xano para deletar no Banco de Dados
+  //     this.xanoService.deleteEvent(idDoEvento).subscribe({
+  //       next: () => {
+  //         // 2. Se deletou no Xano, remove visualmente do FullCalendar
+  //         clickInfo.event.remove(); 
+  //          this.messageService.add({ severity: 'success', summary: 'Successo', detail: 'Evento excluído', key: 'br', life: 3000 });
+  //       },
+  //       error: (err) => {
+  //         console.error(err);
+  //         this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Erro ao excluir no Xano: ' + err.message ,  key: 'br', life: 3000})
+  //       }
+  //     });
+  //   }
+  // }
+
+  excluirEvento() {
+      this.loadingSave = true;
+  const idDoEvento = this.eventoSelecionado.id;
+
+  this.xanoService.deleteEvent(idDoEvento).subscribe({
+    next: () => {
+      this.eventoSelecionado.remove();
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Sucesso',
+        detail: 'Evento excluído',
+        key: 'br',
+        life: 3000
+      });
+        this.loadingSave = false;
+
+      this.mostrarModalEvento = false;
+    },
+    error: (err) => {
+        this.loadingSave = false;
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Erro ao excluir: ' + err.message,
+        key: 'br',
+        life: 3000
       });
     }
-  }
+  });
+}
 
   handleEvents(events: EventApi[]) {
     this.currentEvents.set(events);
@@ -271,5 +317,21 @@ showMostrarFormData(){
   this.mostrarData = true;
   this.mostrarModal = true;
 }
+
+confirmarExclusao() {
+  this.confirmationService.confirm({
+    message: `Deseja excluir o evento '${this.eventoSelecionado.title}'?`,
+    header: 'Confirmação',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Sim',
+    rejectLabel: 'Cancelar',
+
+    accept: () => {
+      this.excluirEvento();
+    }
+  });
+}
+
+
 
 }

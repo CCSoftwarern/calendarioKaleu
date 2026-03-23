@@ -1,5 +1,5 @@
 
-
+  <p-confirmdialog />
   <div class='demo-app'>
   <p-toast position="bottom-right" key="br" />
   <div class='demo-app-sidebar'>
@@ -165,7 +165,67 @@
 
   <ng-template pTemplate="footer">
     <button pButton label="Cancelar" (click)="mostrarModal=false"></button>
-    <button pButton label="Salvar" (click)="salvarEvento()" [disabled]="formEvento.invalid"></button>
+    <button pButton label="Salvar" [loading]="loadingSave" (click)="salvarEvento()" [disabled]="formEvento.invalid"></button>
+  </ng-template>
+
+</p-dialog>
+
+
+<p-dialog 
+  header="Detalhes do Evento" 
+  [(visible)]="mostrarModalEvento" 
+  [modal]="true" 
+  [style]="{width: '400px'}">
+
+  <div *ngIf="eventoSelecionado">
+
+    <div class="mb-2">
+      <strong>Título:</strong>
+      <div>{{ eventoSelecionado.title }}</div>
+    </div>
+
+    <div class="mb-2">
+      <strong>Data:</strong>
+      <div>{{ eventoSelecionado.start | date:'dd/MM/yyyy HH:mm' }}</div>
+    </div>
+
+    <div class="mb-2">
+      <strong>Cliente:</strong>
+      <div>{{ eventoSelecionado.extendedProps?.nm_cliente }}</div>
+    </div>
+    <div class="mb-2">
+      <strong>Telefone:</strong>
+      <div>{{ eventoSelecionado.extendedProps?.telefone_cliente }}</div>
+    </div>
+    <div class="mb-2">
+      <strong>E-mail:</strong>
+      <div>{{ eventoSelecionado.extendedProps?.email }}</div>
+    </div>
+
+    <div class="mb-2">
+      <strong>Vendedor:</strong>
+      <div>{{ eventoSelecionado.extendedProps.nm_vendedor }}</div>
+    </div>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button 
+      pButton 
+      label="Fechar" 
+      icon="pi pi-times"
+      class="p-button-text"
+      (click)="mostrarModalEvento = false">
+    </button>
+
+    <button 
+      pButton 
+      label="Excluir" 
+      icon="pi pi-trash"
+      [loading]="loadingSave"
+      severity="danger"
+      (click)="confirmarExclusao()">
+    </button>
   </ng-template>
 
 </p-dialog>
