@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import { Xano } from '../../services/xano.js';
 import { Evento } from '../../models/modelEvent.js';
@@ -13,14 +13,25 @@ import { Dialog } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import bootstrap5Plugin from '@fullcalendar/bootstrap5';
+import { Toast } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { ProgressSpinner } from 'primeng/progressspinner';
+import { firstValueFrom } from 'rxjs';
+import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
+import { ColorPickerModule } from 'primeng/colorpicker';
+import { DatePickerModule } from 'primeng/datepicker';
+import { InputMaskModule } from 'primeng/inputmask';
+
+
 
 
 @Component({
   selector: 'app-scheduler',
   standalone: true,
-  imports: [ FullCalendarModule, CommonModule, Dialog, ButtonModule, InputTextModule ],
+  imports: [ FullCalendarModule, CommonModule, Dialog, ButtonModule, InputTextModule, Toast, DatePipe,ProgressSpinner, ReactiveFormsModule, ColorPickerModule, DatePickerModule, InputMaskModule],
   templateUrl: './scheduler.html',
   styleUrl: './scheduler.css',
+   providers: [MessageService]
 })
 export class Scheduler implements OnInit{
   private xanoService = inject(Xano);
@@ -28,27 +39,27 @@ export class Scheduler implements OnInit{
   loading: boolean = false;
   mensagemErro: string = '';
   visible: boolean = false;
+  formEvento!: FormGroup;
+  mostrarModal = false;
+  selectInfoGlobal: any;
+  color: string = '#6466f1';
+  mostrarData: boolean = false;
+  
 
 
   ngOnInit(): void {
-   this.xanoService.getData().subscribe((dados: Evento[]) => {
-      
-      // Converte seu Model para o formato do FullCalendar (EventInput)
-      const eventosParaCalendario: EventInput[] = dados.map(item => ({
-        id: String(item.id),
-        title: item.title, // De 'titulo_projeto' para 'title'
-        start: item.start, // O FullCalendar aceita ISO string ou Date object
-        extendedProps: {
-          descricao: item.nm_cliente // Dados extras que não são padrão do calendário
-        }
-      }));
+   
+      this.carregarEventos();
+        this.formEvento = this.fb.group({
+        title: ['', Validators.required],
+        nm_cliente: ['', Validators.required],
+        start: [''],
+        backgroundColor: ['', Validators.required],
+        nm_vendedor:['Não informado',Validators.required],
+        telefone_cliente: ['',Validators.required],
+        email: ['naoinformado@naoinformado.com.br',[Validators.required, Validators.email]]
 
-      // Atualiza o estado do calendário
-      this.calendarOptions.update(options => ({
-        ...options,
-        events: eventosParaCalendario
-      }));
-    });
+  });
   }
 
   calendarVisible = signal(true);
@@ -89,7 +100,7 @@ export class Scheduler implements OnInit{
 
 
   
-  constructor(private changeDetector: ChangeDetectorRef) {
+  constructor(private changeDetector: ChangeDetectorRef, private messageService: MessageService, private fb: FormBuilder) {
   }
 
 
@@ -104,36 +115,93 @@ export class Scheduler implements OnInit{
     }));
   }
 
+  // handleDateSelect(selectInfo: DateSelectArg) {
+  //   const title = prompt('Digite o nome do evento:');
+  //   const calendarApi = selectInfo.view.calendar;
+
+  //   calendarApi.unselect(); // clear date selection
+
+  //   if (title) {
+  //     // 1. Criamos o objeto conforme seu Model do Xano
+  //     const novoEventoParaXano = {
+  //       title: title,
+  //       start: selectInfo.startStr, // Formato ISO "YYYY-MM-DD"
+  //       nm_cliente: 'Claudemyr',
+  //     };
+  //      // 2. Enviamos para o Xano
+  //     this.xanoService.addEvent(novoEventoParaXano).subscribe({
+  //       next: (eventoSalvo) => {
+  //         // 3. Se salvou no Xano, adicionamos visualmente no calendário
+  //         calendarApi.addEvent({
+  //           id: String(eventoSalvo.id),
+  //           title: eventoSalvo.title,
+  //           start: eventoSalvo.start,
+  //           allDay: selectInfo.allDay
+  //         });
+  //        this.messageService.add({ severity: 'success', summary: 'Sucesso', detail: 'Evento adicionado', key: 'br', life: 3000 });
+  //       },
+  //       error: (err) => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Erro ao salvar no Xano: ' + err.message ,  key: 'br', life: 3000})
+  //     });
+  //   }
+  // }
+
   handleDateSelect(selectInfo: DateSelectArg) {
-    const title = prompt('Digite o nome do evento:');
-    this.visible = true;
-    const calendarApi = selectInfo.view.calendar;
+  this.selectInfoGlobal = selectInfo;
 
-    calendarApi.unselect(); // clear date selection
+  this.formEvento.patchValue({
+    start: selectInfo.startStr
+  });
+  this.mostrarData = false;
+  this.mostrarModal = true; // abre modal
+}
 
-    if (title) {
-      // 1. Criamos o objeto conforme seu Model do Xano
-      const novoEventoParaXano = {
-        title: title,
-        start: selectInfo.startStr, // Formato ISO "YYYY-MM-DD"
-        nm_cliente: 'Claudemyr',
-      };
-       // 2. Enviamos para o Xano
-      this.xanoService.addEvent(novoEventoParaXano).subscribe({
-        next: (eventoSalvo) => {
-          // 3. Se salvou no Xano, adicionamos visualmente no calendário
-          calendarApi.addEvent({
-            id: String(eventoSalvo.id),
-            title: eventoSalvo.title,
-            start: eventoSalvo.start,
-            allDay: selectInfo.allDay
-          });
-          alert('Evento salvo no Xano com sucesso!');
-        },
-        error: (err) => alert('Erro ao salvar no Xano: ' + err.message)
+salvarEvento() {
+  if (this.formEvento.invalid) return;
+
+  const calendarApi = this.selectInfoGlobal.view.calendar;
+
+  const novoEventoParaXano = this.formEvento.value;
+
+  calendarApi.unselect();
+
+  this.xanoService.addEvent(novoEventoParaXano).subscribe({
+    next: (eventoSalvo) => {
+      calendarApi.addEvent({
+        id: String(eventoSalvo.id),
+        title: eventoSalvo.title,
+        start: eventoSalvo.start,
+        allDay: this.selectInfoGlobal.allDay,
+        backgroundColor: eventoSalvo.backgroundColor,
+         extendedProps: {
+              nm_cliente: eventoSalvo.nm_cliente,
+              nm_vendedor: eventoSalvo.nm_vendedor,
+              telefone_cliente: eventoSalvo.telefone_cliente,
+              email: eventoSalvo.email
+  }
+      });
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Sucesso',
+        detail: 'Evento adicionado',
+        key: 'br',
+        life: 3000
+      });
+      this.mostrarData = false;
+      this.mostrarModal = false;
+      this.formEvento.reset();
+    },
+    error: (err) => {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Erro ao salvar no Xano: ' + err.message,
+        key: 'br',
+        life: 3000
       });
     }
-  }
+  });
+}
 
 
   handleEventClick(clickInfo: EventClickArg) {
@@ -144,11 +212,11 @@ export class Scheduler implements OnInit{
         next: () => {
           // 2. Se deletou no Xano, remove visualmente do FullCalendar
           clickInfo.event.remove(); 
-          alert('Evento removido com sucesso!');
+           this.messageService.add({ severity: 'success', summary: 'Successo', detail: 'Evento excluído', key: 'br', life: 3000 });
         },
         error: (err) => {
           console.error(err);
-          alert('Erro ao excluir no Xano.');
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Erro ao excluir no Xano: ' + err.message ,  key: 'br', life: 3000})
         }
       });
     }
@@ -159,31 +227,49 @@ export class Scheduler implements OnInit{
     this.changeDetector.detectChanges(); // workaround for pressionChangedAfterItHasBeenCheckedError
   }
 
-onGetEventos() {
-  this.loading = true;
-
-  this.xanoService.getData().subscribe({
-    next: (response) => {
-      this.dados = response;
-
-      console.log(this.dados);
-    },
-
-    error: (err) => {
-      console.error('Erro ao carregar eventos:', err);
-      this.mensagemErro = 'Erro ao carregar dados';
-    },
-
-    complete: () => {
-      this.loading = false;
-    }
-  });
-}
 
 position: 'left' | 'right' | 'top' | 'bottom' | 'center' | 'topleft' | 'topright' | 'bottomleft' | 'bottomright' = 'center';
     showDialog(position: 'left' | 'right' | 'top' | 'bottom' | 'center' | 'topleft' | 'topright' | 'bottomleft' | 'bottomright') {
         this.position = position;
         this.visible = true;
     }
+
+
+async carregarEventos() {
+  try {
+    this.loading = true;
+
+    const dados: Evento[] = await firstValueFrom(
+      this.xanoService.getData()
+    );
+
+    const eventosParaCalendario: EventInput[] = dados.map(item => ({
+      id: String(item.id),
+      title: item.title,
+      start: item.start,
+      backgroundColor: item.backgroundColor,
+      extendedProps: {
+        nm_cliente: item.nm_cliente,
+        nm_vendedor: item.nm_vendedor,
+        telefone_cliente: item.telefone_cliente,
+        email: item.email
+      }
+    }));
+
+    this.calendarOptions.update(options => ({
+      ...options,
+      events: eventosParaCalendario
+    }));
+
+  } catch (error) {
+    console.error('Erro ao carregar eventos:', error);
+  } finally {
+    this.loading = false;
+  }
+}
+showMostrarFormData(){
+  this.mostrarData = true;
+  this.mostrarModal = true;
+}
 
 }
